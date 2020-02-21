@@ -4,7 +4,7 @@ import sys
 import torch
 from torch import optim
 from torch import nn
-import torch.nn.functional as F
+import torch.nn.functional as func
 import torchvision
 import torchvision.models as models
 from torchvision import models,transforms
@@ -18,7 +18,9 @@ from arguments import get_input_args
 from get_transforms import get_transforms
 
 def load_checkpoint(filepath):
+    
     checkpoint = torch.load(filepath)
+    
     model = checkpoint['arch']
     
     if (model == 'vgg16'):
@@ -27,9 +29,13 @@ def load_checkpoint(filepath):
         print("Architecture shoud be vgg16")
         
     model.classifier = checkpoint['classifier']
+    
     model.load_state_dict(checkpoint['state_dict'],strict = False)
+    
     optimizer = checkpoint['optimizer_dict']
+    
     epochs = checkpoint['epoch']
+    
     model.class_to_idx = checkpoint['class_to_idx']
 
     for param in model.parameters():
@@ -61,13 +67,13 @@ def process_image(path_to_image):
    
     
 def predict(path_to_image, model, device, top_k, class_to_idx):
-     # TODO: predict the class of image
+    # predicting the class of image
         
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model.to(device)
     model.eval()
-    img = process_image(path_to_image)
-    img_torch = torch.from_numpy(img).type(torch.cuda.FloatTensor)
+    imag = process_image(path_to_image)
+    img_torch = torch.from_numpy(imag).type(torch.cuda.FloatTensor)
     img_torch=img_torch.unsqueeze_(dim=0)
     img_torch = img_torch.float()
 
@@ -77,7 +83,7 @@ def predict(path_to_image, model, device, top_k, class_to_idx):
         output = model.forward(img_torch.cuda())
           
     
-    probability = F.softmax(output.data,dim=1)
+    probability = func.softmax(output.data,dim=1)
     
     return probability.topk(top_k)
 
@@ -85,25 +91,30 @@ def predict(path_to_image, model, device, top_k, class_to_idx):
 
 def main():
     
-    # get all arguments
+    # get all argument values
+    
     args_values = get_input_args()
+    
+    #retreiving argument values
+    
     data_dir = args_values.data_dir
-    save_dir = args_values.checkpoint_dir
     device = args_values.device
-    category_names = args_values.category_names
     path_to_image = args_values.path_to_image
     top_k = args_values.top_k
     arch = args_values.arch
-    
+    save_dir = args_values.checkpoint_dir
+    category_names = args_values.category_names
+
     # path of image
-    path_of_image = 'flowers/test/' + path_to_image
+    
+    path_of_image = 'flowers/test/'+path_to_image
     
     print("The data path: \t", data_dir)
     print("Saved Directory: \t", save_dir)
-    print("Device name: \t", device)
+    print("Device: \t", device)
     print("top_k: \t", top_k)
-    print("category names: \t", category_names)
-    print("path to image: \t", path_to_image)
+    print("categories list: \t", category_names)
+    print("path to image file: \t", path_to_image)
    
     # checking for checkpoint
     if os.path.exists(save_dir):
